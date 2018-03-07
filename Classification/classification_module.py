@@ -25,3 +25,15 @@ clf.fit(X_train, y_train)
 # Print the accuracy with clf.score()
 accuracy = clf.score(X_test, y_test)
 print(accuracy)
+
+# testing additioanl values to view the effect on prediction
+example_measures = np.array([4,2,1,1,1,2,3,2,1])
+example_measures = example_measures.reshape(1, -1)
+prediction = clf.predict(example_measures)
+print(prediction)
+
+# testing two predictions on the same classifier
+example_measures = np.array([[4,2,1,1,1,2,3,2,1],[4,2,1,1,1,2,3,2,1]])
+example_measures = example_measures.reshape(2,-1)
+prediction = clf.predict(example_measures)
+print(prediction)
