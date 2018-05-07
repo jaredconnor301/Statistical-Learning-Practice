@@ -1,0 +1,127 @@
+---
+title: "Dynamic Econometric Models"
+author: "Jared Connor"
+date: "May 2, 2018"
+output: html_document
+---
+```{r, message=FALSE, include=FALSE}
+
+# Importing required libraries
+library(zoo)
+library(stargazer)
+library(dyn)
+library(knitr)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(stats)
+library(dynlm)
+
+```
+
+This small tutorial is going to be an introduction to dynamic econometric models based upon the [Applied Econometric (ECON 508)](http://www.econ.uiuc.edu/~econ508/R/e-ta3_R.html) course from Illinois. The hope is to understanding these modeling techniques from an applied perspective to utilize in further projects. 
+
+[Distributed lag models](http://www.reed.edu/economics/parker/312/tschapters/S13_Ch_3.pdf) are a powerful set of econometric models that allow us to capture the time dependent effects of systems that a static linear or time series model lack. For example, if we are attempting to view the effects of a company moving into a metropolitan area on local wages, it would make sense that wages wouldn't directly increase immediately after the event. In realitly, a gradual increase in wages would be observed. Attempting to view the number of period (__or lags__) that this takes is exactly the tool required to understand the lasting effects of these events. 
+
+### Data Set: 
+We're going to be utilizing the data borrowed from Johnston and Dinardo's Econometric Methods (1997, 4th ed). 
+
+```{r}
+
+auto <- read.table("http://www.econ.uiuc.edu/~econ508/data/AUTO2.txt", header = TRUE)
+kable(head(auto))
+
+```
+
+Now we have to define our variables of interest. What we are doing here is defining these columns in the `auto` dataframe to _time series_ objects in R. These are specifically used to allow for regressions and models that incorporate lags and leads, auto/partial correlation plots, and other time related aspects that are quite handy. We could, if we wanted to, dive quite farther into the time related objects in R, but for brevetiy, I tend to use this as a reference: [Dates and Times in R](https://www.stat.berkeley.edu/~s133/dates.html).
+
+```{r}
+
+gas <- ts(auto$gas, start = 1959, frequency = 4)
+price <- ts(auto$price, start = 1959, frequency = 4)
+income <- ts(auto$income, start = 1959, frequency = 4)
+miles <- ts(auto$miles, start = 1959, frequency = 4)
+
+```
+
+Let's view and plot some graphs eh? 
+
+### Gas
+```{r}
+
+plot(gas, main = "Gas")
+
+```
+
+### Price 
+```{r}
+
+plot(price, main = "Price")
+
+```
+
+### Income
+```{r}
+
+plot(income, main = "Income")
+
+```
+
+### Miles 
+```{r}
+
+plot(miles, main = "Miles")
+
+```
+
+These are great! Granted we are just using the basic `plot()` function from base R. We could possibly explore some prettier graphs such as Plotly, ggplot2, or others, but for right now, this serves the purpose. 
+
+
+## Autocorrelation and Partial Correlation Plots
+
+We can also generate autocorrelation and partial correlation plots. Also defined as a [correlogram](https://en.wikipedia.org/wiki/Correlogram), these plots allows us to view the time dependencies of the variables of interest, or the correlation between two or more periods of variable observance. __In short__ answering the question: "Is an observation related to an adjacent observation?".
+
+Why is this important? Randomness is one of the four main assumptions that must hold for statistical measurement proccesses. So lets plot them: 
+
+Autocorrelation for Gas:
+```{r}
+
+acf(gas)
+
+```
+
+Autocorrelation for Price:
+```{r}
+
+acf(price)
+
+```
+
+As we can view, both variables displayed are highly time dependent. The dashed line illustrates the 20% confidence interval. View the roughly 4 lag periods that have a significant effect on the current period, which means that a result 4 periods ago, in this case the price of gas 4 months ago, has an effect (or can be felt) on the current price. For time related observations, such as prices, biological series, finanical/economic series, time dependence occurs quite often! Being able to understand and cope with models of these structures in an important tool for your tool belt. 
+
+# Running Dynamic Models
+Now, we can begin constructing the dynamic models and their distributed lag structures. To start simple, let's define a model such as: 
+```{r} 
+
+model_1 <- dyn$lm(gas~stats::lag(gas, -1) + price + stats::lag(price, -1))
+summary(model_1)
+acf(model_1$residuals)
+pacf(model_1$residuals)
+```
+
+As we can view, the model results are quite significant, with a 1 period lag in both gas and price series significant at the 1% level. Viewing the autocorrelation and partial correlation plots of the model, we can view the time dependency of the lags (except for the most recent lag) in the residuals appears to be uncorrelated. Importantly, as a general rule of thume, we should require all time effects of our residuals to be suffed out to deem our model acceptable. 
+
+Constructing higher order distributed lag models can also be done! Utilizing the [__dynlm__](https://cran.r-project.org/web/packages/dynlm/dynlm.pdf) package, we can create dynamic models of substantial strucutre without much added complexity: 
+
+```{r}
+
+model_2 <- dynlm(gas ~ L(price, 0:5) + L(income, 0:5) + L(gas, 1:5))
+summary(model_2)
+acf(model_2$residuals)
+pacf(model_2$residuals)
+
+```
+
+This model is a reproduction of the dynamic model given by Johnston and DiNardo, 1997 ,p. 269, Table 8.5. Note the significance levels and R^2 results of the expanded model. 
+
+As we hopefully illustrated, dynamic model are a powerful modeling technique for deriving inference from model containing time dependent variables. Due to the structure of finanical & economic data, model variables are commonly of this structure, so it makes reasonale sense to understand this technique. 
